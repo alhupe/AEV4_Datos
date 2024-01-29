@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartas de Pokémon</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            padding: 0;
+            background-color: #9ad2e0;
+        }
+
+        .card-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+
+        .card {
+            border: 1px solid #4d4949;
+            background-color: #c1d4bf;
+            border-radius: 10px;
+            padding: 10px;
+            margin: 10px;
+            width: calc(25% - 20px);
+            box-sizing: border-box;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            min-height: 400px;
+            position: relative;
+        }
+
+        .card img {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 10px;
+        }
+
+        .card-content {
+            flex-grow: 1;
+            max-height: 300px;
+            overflow: auto;
+        }
+
+        .add-to-favorites {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: auto;
+            margin-bottom: 10px;
+        }
+
+        .search-container {
+            margin: 20px;
+            text-align: center;
+        }
+
+        input[type="text"] {
+            padding: 5px;
+            width: 200px;
+        }
+
+        button {
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        button.favorites-button {
+            padding: 8px 15px;
+            cursor: pointer;
+            background-color: #008CBA;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            position: absolute;
+            right: 70px;
+        }
+
+        #pokemon-cards-container {
+            text-align: center;
+        }
+
+        h1 {
+            text-align: center;
+            color: yellow;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 2px 2px 5px #00f;
+        }
+
+        .pagination-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .pagination-button {
+            padding: 8px 15px;
+            cursor: pointer;
+            background-color: #008CBA;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin: 0 5px;
+        }
+
+        button.load-page-button {
+            padding: 8px 15px;
+            cursor: pointer;
+            background-color: #008CBA;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1 class="destacado">Tus cartas favoritas de Pokemon TCG</h1>
+
+    <div class="search-container">
+        <div>
+            <label for="pokemon-search">Buscar Pokémon:</label>
+            <input type="text" id="pokemon-search" placeholder="Nombre del Pokémon">
+            <button onclick="buscarPokemon()">Buscar</button>
+            <button class="load-page-button" onclick="cambiarPagina('siguiente')">Todas las cartas</button>
+            <button class="favorites-button" onclick="verMisFavoritos()">Ver Mis Favoritos</button>
+        </div>
+    </div>
+
+    <div id="pokemon-cards-container" class="card-container">
+    </div>
+
+    <div class="pagination-container">
+        <button class="pagination-button" onclick="cambiarPagina('anterior')">Página Anterior</button>
+        <span class="current-page" id="current-page">1</span>
+        <button class="pagination-button" onclick="cambiarPagina('siguiente')">Página Siguiente</button>
+    </div>
+
+    <script>
+        let paginaActual = 1;
+
+        /**
+        * Función que se ejecuta cuando la ventana se ha cargado completamente.
+        * Carga la primera página de datos al inicio.
+        */
+        window.onload = function () {
+            cargarPagina(paginaActual);
+        };
+
+        /**
+        * Realiza una petición GET a la API para obtener una página específica con 24 objetos.
+        * Construye tarjetas con los datos obtenidos y los muestra en la interfaz.
+        *
+         * @param {number} pagina - Número de la página que se desea cargar.
+        */
+        function cargarPagina(pagina) {
+            fetch(`https://api.pokemontcg.io/v2/cards?page=${pagina}&pageSize=24`)
+                .then(response => response.json())
+                .then(data => {
+                    construirTarjetas(data.data);
+                    document.getElementById('current-page').innerText = pagina;
+                    // Desplaza la página al principio después de cargar los datos.
+                    window.scrollTo(0, 0);
+                })
+                .catch(error => console.error('Error al obtener datos de la API:', error));
+        }
+
+        /**
+        * Cambia la página actual y realiza una nueva petición a la API.
+        * Se utiliza para cargar la página anterior o siguiente.
+        *
+        * @param {string} direccion - Dirección de la página ('anterior' o 'siguiente').
+        */
+        function cambiarPagina(direccion) {
+            if (direccion === 'anterior' && paginaActual > 1) {
+                paginaActual--;
+            } else if (direccion === 'siguiente') {
+                paginaActual++;
+            }
+
+            cargarPagina(paginaActual);
+        }
+
+        /**
+        * Realiza una petición a la API para buscar un Pokémon por nombre.
+        * Construye tarjetas con los datos obtenidos y los muestra en la interfaz.
+        */
+        function buscarPokemon() {
+            const searchInput = document.getElementById('pokemon-search');
+            const searchTerm = searchInput.value.trim().toLowerCase();
+
+            fetch(`https://api.pokemontcg.io/v2/cards?q=name:${searchTerm}`)
+                .then(response => response.json())
+                .then(data => {
+                    construirTarjetas(data.data);
+                    // Desplaza la página al principio después de cargar los datos de la búsqueda.
+                    window.scrollTo(0, 0);
+                })
+                .catch(error => console.error('Error al obtener datos de la API:', error));
+        }
+
+        /**
+        * Agrega un Pokémon a la lista de favoritos en la base de datos local.
+         * Realiza una petición POST al servidor con los datos del Pokémon.
+        *
+        * @param {Object} pokemon - Datos del Pokémon que se va a agregar a favoritos.
+        */
+        function agregarAFavoritos(pokemon) {
+            const formData = new FormData();
+            formData.append('idPokemon', pokemon.id || '');
+            formData.append('nombrePokemon', pokemon.name || '');
+            formData.append('tipo', pokemon.types[0] || '');
+            formData.append('nivel', pokemon.level || '');
+            formData.append('hp', pokemon.hp || 0);
+            formData.append('habilidades', pokemon.abilities ? escapeComillas(pokemon.abilities.map(a => a.name).join(', ')) : '');
+            formData.append('ataques', pokemon.attacks ? escapeComillas(pokemon.attacks.map(a => a.name).join(', ')) : '');
+            formData.append('debilidades', pokemon.weaknesses ? pokemon.weaknesses.map(w => w.type).join(', ') : '');
+            formData.append('resistencias', pokemon.resistances ? pokemon.resistances.map(r => r.type).join(', ') : '');
+            formData.append('rareza', pokemon.rarity || '');
+            formData.append('imagen', pokemon.images && pokemon.images.small ? pokemon.images.small : '');
+
+            const ataquesDesc = pokemon.attacks ? pokemon.attacks.map(a => a.text).join(', ') : '';
+            formData.append('ataquesDesc', escapeComillas(ataquesDesc));
+
+            const habilidadesDesc = pokemon.abilities ? pokemon.abilities.map(a => a.text).join(', ') : '';
+            formData.append('habilidadesDesc', escapeComillas(habilidadesDesc));
+
+            //Llamos a agregarFavoritos.php y realizamos la peticion POST
+            fetch('agregarFavoritos.php', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.text())
+                .then(result => {
+                    alert(result);
+                })
+                .catch(error => console.error('Error al enviar datos al servidor:', error));
+        }
+
+
+        /**
+         * Función para escapar comillas simples y dobles en una cadena.
+        *
+         * @param {string} str - Cadena que puede contener comillas simples o dobles.
+        * @returns {string} - Cadena con comillas escapadas.
+        */
+        function escapeComillas(str) {
+            return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
+        }
+
+
+        /**
+        * Construye tarjetas de Pokémon con los datos proporcionados y las muestra en la interfaz.
+        *
+        * @param {Object[]} pokemonData - Datos de los Pokémon para construir las tarjetas.
+        */
+        function construirTarjetas(pokemonData) {
+            const cardsContainer = document.getElementById('pokemon-cards-container');
+
+            // Limpiar el contenedor actual
+            cardsContainer.innerHTML = '';
+
+            // Construir tarjetas con los datos recuperados
+            pokemonData.forEach(pokemon => {
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                // Añade la imagen de la carta
+                if (pokemon.images && pokemon.images.small) {
+                    const img = document.createElement('img');
+                    img.src = pokemon.images.small;
+                    img.alt = `${pokemon.name} - Imagen`;
+                    card.appendChild(img);
+                }
+
+                // Añade la información de la carta con comprobaciones
+                const cardContent = document.createElement('div');
+                cardContent.className = 'card-content';
+
+                cardContent.innerHTML += `
+                    <h2>${pokemon.name || 'Nombre no disponible'}</h2>
+                    <hr>
+                    <p><b>Tipo:</b> ${pokemon.types || 'Tipo no disponible'}</p>
+                    <p><b>Nivel:</b> ${pokemon.level || 'Nivel no disponible'}</p>
+                    <p><b>HP:</b> ${pokemon.hp || 'HP no disponible'}</p>
+
+                    <h3>Habilidades</h3>
+                    <ul style="list-style-type: none; padding: 0; text-align: center;">
+                    ${pokemon.abilities ? pokemon.abilities.map(ability => `<li><b>${ability.name}</b> - ${ability.text}</li>`).join('') : '<li>Habilidades no disponibles</li>'}
+                    </ul>
+
+                    <h3>Ataques</h3>
+                    <ul style="list-style-type: none; padding: 0; text-align: center;">
+                    ${pokemon.attacks ? pokemon.attacks.map(attack => `<li><b>${attack.name}</b> - ${attack.text}</li>`).join('') : '<li>Ataques no disponibles</li>'}
+                    </ul>
+
+                    <p><b>Debilidades:</b> ${pokemon.weaknesses ? pokemon.weaknesses.map(weakness => weakness.type).join(', ') : 'Debilidades no disponibles'}</p>
+                    <p><b>Resistencias:</b> ${pokemon.resistances ? pokemon.resistances.map(resistance => resistance.type).join(', ') : 'Resistencias no disponibles'}</p>
+                    <p><b>Rareza:</b> ${pokemon.rarity || 'Rareza no disponible'}</p>
+                    `;
+
+                cardContent.style.textAlign = 'center';
+
+                card.appendChild(cardContent);
+
+                //Creamos un boton para cada tarjeta
+                const addToFavoritesButton = document.createElement('button');
+                addToFavoritesButton.className = 'add-to-favorites';
+                addToFavoritesButton.textContent = 'Agregar a Favoritos';
+                addToFavoritesButton.onclick = () => agregarAFavoritos(pokemon);
+
+                card.appendChild(addToFavoritesButton);
+                cardsContainer.appendChild(card);
+            });
+        }
+
+        /**
+        * Realiza una petición GET a la base de datos para recuperar los Pokémon guardados como favoritos.
+        * Construye tarjetas con los datos obtenidos y los muestra en la interfaz.
+        */
+        function verMisFavoritos() {
+            fetch('recuperarFavoritos.php')
+                .then(response => response.json())
+                .then(data => {
+                    construirTarjetas(data);
+                    console.log(data);
+                })
+                .catch(error => console.error('Error al obtener datos de favoritos:', error));
+        }
+
+    </script>
+</body>
+
+</html>
